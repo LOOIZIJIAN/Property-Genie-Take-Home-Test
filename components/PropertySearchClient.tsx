@@ -102,7 +102,9 @@ export default function PropertySearchClient({
 
   const handlePageChange = (event: React.ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleApplySavedSearch = (savedFilters: PropertyFilters, savedSort?: string) => {
