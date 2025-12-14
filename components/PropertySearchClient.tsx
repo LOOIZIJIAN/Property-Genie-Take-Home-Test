@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Container,
   Typography,
@@ -53,7 +53,10 @@ export default function PropertySearchClient({
   const [refreshSavedSearches, setRefreshSavedSearches] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [isFirstRender, setIsFirstRender] = useState(true);
+  const isFirstRender = useRef(true);
+
+  // Create a stable key for filters to detect changes
+  const filtersKey = JSON.stringify(filters);
 
   const loadProperties = useCallback(async () => {
     setLoading(true);
@@ -62,7 +65,7 @@ export default function PropertySearchClient({
     try {
       const response = await fetchProperties({
         page: currentPage,
-        limit: 12,
+        limit: 20,
         sort: sortBy,
         filters,
       });
@@ -79,13 +82,12 @@ export default function PropertySearchClient({
   }, [currentPage, sortBy, filters]);
 
   useEffect(() => {
-    if (isFirstRender) {
-      setIsFirstRender(false);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
       return;
     }
     loadProperties();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, sortBy, filters]);
+  }, [currentPage, sortBy, filtersKey, loadProperties]);
 
   const handleFiltersChange = (newFilters: PropertyFilters) => {
     setFilters(newFilters);
@@ -134,7 +136,10 @@ export default function PropertySearchClient({
   );
 
   return (
-    <Container maxWidth="xl" className="py-8 relative">
+    <Container 
+      maxWidth="xl" 
+      sx={{ py: 4, position: 'relative' }}
+    >
       <Box className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <Typography variant="h3" component="h1" className="font-bold">
           Property Search

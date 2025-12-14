@@ -45,12 +45,11 @@ export default function SavedSearchesComponent({
   const [editingSearch, setEditingSearch] = useState<SavedSearch | null>(null);
   const [editName, setEditName] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Wrap in a timeout or simple check to break synchronous execution if needed,
-    // but typically fetch/get from localStorage is fine in useEffect.
-    // However, if getSavedSearches() triggers something side-effecty (it doesn't seem to), it's fine.
-    // The previous error might have been due to strict mode or specific linter settings.
+    // Only access localStorage after component mounts on client
+    setMounted(true);
     const searches = getSavedSearches();
     setSavedSearches(searches);
   }, []);
@@ -103,7 +102,8 @@ export default function SavedSearchesComponent({
     return parts.length > 0 ? parts.join(' • ') : 'No filters';
   };
 
-  if (savedSearches.length === 0) {
+  // Don't render until mounted to avoid hydration mismatch
+  if (!mounted || savedSearches.length === 0) {
     return null;
   }
 

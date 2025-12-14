@@ -21,6 +21,7 @@ import {
   DialogActions,
 } from '@mui/material';
 import { Save, BookmarkBorder } from '@mui/icons-material';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { PropertyFilters } from '@/types/property';
 import { fetchStates, fetchCities } from '@/app/api/properties';
 import { saveSearch } from '@/lib/savedSearches';
@@ -282,6 +283,7 @@ export default function PropertyFiltersComponent({
           variant="outlined" 
           onClick={clearFilters}
           className="h-10"
+          startIcon={<DeleteOutlineIcon />}
         >
           Clear Filters
         </Button>

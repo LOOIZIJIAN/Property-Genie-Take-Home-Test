@@ -28,12 +28,14 @@ export async function getProperties(params: PropertySearchParams): Promise<{
   // Build query string
   const searchParams = new URLSearchParams();
 
-  const page = params.page || 1;
+  // For client-side filtering, we need to fetch more data
+  // If filters are applied, fetch a larger batch to ensure we have enough results
+  const hasFilters = params.filters && Object.keys(params.filters).length > 0;
+  const fetchLimit = hasFilters ? 1000 : (params.limit || 20);
+  const page = hasFilters ? 1 : (params.page || 1);
+  
   searchParams.append('page', page.toString());
-
-  if (params.limit) {
-    searchParams.append('limit', params.limit.toString());
-  }
+  searchParams.append('limit', fetchLimit.toString());
 
   // Map sort options to API format
   if (params.sort) {
@@ -88,6 +90,13 @@ export async function getProperties(params: PropertySearchParams): Promise<{
 
   const url = `${API_BASE_URL}?${searchParams.toString()}`;
 
+  // Debug logging
+  console.log('API Request:', {
+    url,
+    body: requestBody,
+    filters: params.filters
+  });
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -104,6 +113,20 @@ export async function getProperties(params: PropertySearchParams): Promise<{
 
   const apiResponse = await response.json();
   const items = apiResponse.items || [];
+
+  // Debug logging
+  console.log('API Response:', {
+    totalItems: items.length,
+    totalCount: apiResponse._meta?.totalCount,
+    sampleItems: items.slice(0, 3).map((item: ApiProperty) => ({
+      id: item.id,
+      name: item.name,
+      state: item.state,
+      city: item.city,
+      type: item.type
+    })),
+    uniquePropertyTypes: [...new Set(items.map((item: ApiProperty) => item.type))]
+  });
 
   // Check all images in parallel for better performance
   const imageChecks = await Promise.all(
@@ -149,14 +172,69 @@ export async function getProperties(params: PropertySearchParams): Promise<{
   };
 
   // Transform API response to match expected format
-  const transformedProperties = items.map((item: ApiProperty, index: number) =>
+  let transformedProperties = items.map((item: ApiProperty, index: number) =>
     transformProperty(item, index)
   );
 
+  // Apply client-side filtering as fallback if API doesn't filter properly
+  if (params.filters) {
+    transformedProperties = transformedProperties.filter((property) => {
+      // State filter
+      if (params.filters!.state && property.location.state !== params.filters!.state) {
+        return false;
+      }
+      
+      // City filter
+      if (params.filters!.city && property.location.city !== params.filters!.city) {
+        return false;
+      }
+      
+      // Price filters
+      if (params.filters!.minPrice && property.price < params.filters!.minPrice) {
+        return false;
+      }
+      
+      if (params.filters!.maxPrice && property.price > params.filters!.maxPrice) {
+        return false;
+      }
+      
+      // Property type filter with case-insensitive matching
+      if (params.filters!.propertyTypes?.length) {
+        const propertyTypeMatch = params.filters!.propertyTypes.some(filterType => 
+          property.property_type.toLowerCase() === filterType.toLowerCase() ||
+          property.property_type.toLowerCase().includes(filterType.toLowerCase()) ||
+          filterType.toLowerCase().includes(property.property_type.toLowerCase())
+        );
+        if (!propertyTypeMatch) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }
+
+  console.log('After client-side filtering:', {
+    originalCount: items.length,
+    filteredCount: transformedProperties.length,
+    appliedFilters: params.filters
+  });
+
+  // Update pagination info based on filtered results
+  const filteredTotal = transformedProperties.length;
+  const pageSize = params.limit || 20;
+  const currentPage = params.page || 1;
+  const totalPages = Math.ceil(filteredTotal / pageSize);
+  
+  // Apply pagination to filtered results
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedProperties = transformedProperties.slice(startIndex, endIndex);
+
   return {
-    data: transformedProperties,
-    total: apiResponse._meta?.totalCount || 0,
-    page: apiResponse._meta?.currentPage || 1,
-    totalPages: apiResponse._meta?.pageCount || 1,
+    data: paginatedProperties,
+    total: filteredTotal,
+    page: currentPage,
+    totalPages: totalPages,
   };
 }

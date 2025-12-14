@@ -5,7 +5,7 @@ export default async function PropertySearchPage() {
   // Fetch initial data on the server
   const initialData = await getProperties({
     page: 1,
-    limit: 12,
+    limit: 20,
     sort: 'created_at',
   });
 
