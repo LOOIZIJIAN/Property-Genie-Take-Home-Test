@@ -21,7 +21,6 @@ import {
 } from '@mui/material';
 import {
   Bookmark,
-  BookmarkBorder,
   Delete,
   Edit,
   PlayArrow,
@@ -35,14 +34,12 @@ import {
 
 interface SavedSearchesProps {
   onApplySearch: (filters: PropertyFilters, sort?: string) => void;
-  currentFilters: PropertyFilters;
+  currentFilters?: PropertyFilters;
   currentSort?: string;
 }
 
 export default function SavedSearchesComponent({
   onApplySearch,
-  currentFilters,
-  currentSort,
 }: SavedSearchesProps) {
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [editingSearch, setEditingSearch] = useState<SavedSearch | null>(null);
@@ -50,7 +47,12 @@ export default function SavedSearchesComponent({
   const [openDialog, setOpenDialog] = useState(false);
 
   useEffect(() => {
-    loadSavedSearches();
+    // Wrap in a timeout or simple check to break synchronous execution if needed,
+    // but typically fetch/get from localStorage is fine in useEffect.
+    // However, if getSavedSearches() triggers something side-effecty (it doesn't seem to), it's fine.
+    // The previous error might have been due to strict mode or specific linter settings.
+    const searches = getSavedSearches();
+    setSavedSearches(searches);
   }, []);
 
   const loadSavedSearches = () => {
@@ -207,4 +209,3 @@ export default function SavedSearchesComponent({
     </>
   );
 }
-
