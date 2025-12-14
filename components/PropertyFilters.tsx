@@ -11,6 +11,7 @@ import {
   Chip,
   OutlinedInput,
   Button,
+  SelectChangeEvent,
   Paper,
   Typography,
   Autocomplete,
@@ -40,6 +41,23 @@ const PROPERTY_TYPES = [
   'Townhouse',
 ];
 
+// Debounce helper
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function PropertyFiltersComponent({ 
   filters, 
   sort,
@@ -52,6 +70,52 @@ export default function PropertyFiltersComponent({
   const [loadingCities, setLoadingCities] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [searchName, setSearchName] = useState('');
+
+  // Local state for debouncing price inputs
+  const [minPriceInput, setMinPriceInput] = useState<string>(filters.minPrice?.toString() || '');
+  const [maxPriceInput, setMaxPriceInput] = useState<string>(filters.maxPrice?.toString() || '');
+
+  const debouncedMinPrice = useDebounce(minPriceInput, 500);
+  const debouncedMaxPrice = useDebounce(maxPriceInput, 500);
+
+  // Sync inputs with filters when filters change externally (e.g. clear filters)
+  useEffect(() => {
+    if (filters.minPrice?.toString() !== minPriceInput && filters.minPrice !== undefined) {
+        setMinPriceInput(filters.minPrice.toString());
+    } else if (filters.minPrice === undefined && minPriceInput !== '') {
+        setMinPriceInput('');
+    }
+
+    if (filters.maxPrice?.toString() !== maxPriceInput && filters.maxPrice !== undefined) {
+        setMaxPriceInput(filters.maxPrice.toString());
+    } else if (filters.maxPrice === undefined && maxPriceInput !== '') {
+        setMaxPriceInput('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  // Apply debounced price changes
+  useEffect(() => {
+    const min = debouncedMinPrice ? parseInt(debouncedMinPrice) : undefined;
+    const max = debouncedMaxPrice ? parseInt(debouncedMaxPrice) : undefined;
+
+    if (min !== filters.minPrice || max !== filters.maxPrice) {
+        // Avoid loop if values match
+        if ((min === filters.minPrice && max === filters.maxPrice) ||
+            (isNaN(Number(debouncedMinPrice)) && debouncedMinPrice !== '') ||
+            (isNaN(Number(debouncedMaxPrice)) && debouncedMaxPrice !== '')) {
+            return;
+        }
+
+        onFiltersChange({
+            ...filters,
+            minPrice: min,
+            maxPrice: max,
+        });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedMinPrice, debouncedMaxPrice]);
+
 
   useEffect(() => {
     const loadStates = async () => {
@@ -87,19 +151,19 @@ export default function PropertyFiltersComponent({
     }
   }, [filters.state]);
 
-  const handlePriceChange = (field: 'minPrice' | 'maxPrice', value: string) => {
-    const numValue = value ? parseInt(value) : undefined;
-    onFiltersChange({
-      ...filters,
-      [field]: numValue,
-    });
+  const handlePriceInputChange = (field: 'minPrice' | 'maxPrice', value: string) => {
+    if (field === 'minPrice') {
+        setMinPriceInput(value);
+    } else {
+        setMaxPriceInput(value);
+    }
   };
 
-  const handlePropertyTypesChange = (event: any) => {
+  const handlePropertyTypesChange = (event: SelectChangeEvent<string[]>) => {
     const value = event.target.value;
     onFiltersChange({
       ...filters,
-      propertyTypes: typeof value === 'string' ? value.split(',') : value,
+      propertyTypes: typeof value === 'string' ? value.split(',') : value as string[],
     });
   };
 
@@ -120,6 +184,8 @@ export default function PropertyFiltersComponent({
 
   const clearFilters = () => {
     onFiltersChange({});
+    setMinPriceInput('');
+    setMaxPriceInput('');
   };
 
   const handleSaveSearch = () => {
@@ -148,23 +214,23 @@ export default function PropertyFiltersComponent({
   };
 
   return (
-    <Paper className="p-4 mb-6">
+    <Paper className="p-4 mb-6 shadow-none md:shadow-sm">
       <Typography variant="h6" className="mb-4">Filters</Typography>
       
       <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <TextField
           label="Min Price (RM)"
           type="number"
-          value={filters.minPrice || ''}
-          onChange={(e) => handlePriceChange('minPrice', e.target.value)}
+          value={minPriceInput}
+          onChange={(e) => handlePriceInputChange('minPrice', e.target.value)}
           size="small"
         />
         
         <TextField
           label="Max Price (RM)"
           type="number"
-          value={filters.maxPrice || ''}
-          onChange={(e) => handlePriceChange('maxPrice', e.target.value)}
+          value={maxPriceInput}
+          onChange={(e) => handlePriceInputChange('maxPrice', e.target.value)}
           size="small"
         />
         
