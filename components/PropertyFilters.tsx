@@ -14,13 +14,21 @@ import {
   Paper,
   Typography,
   Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
+import { Save, BookmarkBorder } from '@mui/icons-material';
 import { PropertyFilters } from '@/types/property';
 import { fetchStates, fetchCities } from '@/app/api/properties';
+import { saveSearch } from '@/lib/savedSearches';
 
 interface PropertyFiltersProps {
   filters: PropertyFilters;
+  sort?: string;
   onFiltersChange: (filters: PropertyFilters) => void;
+  onSaveSearch?: () => void;
 }
 
 const PROPERTY_TYPES = [
@@ -32,11 +40,18 @@ const PROPERTY_TYPES = [
   'Townhouse',
 ];
 
-export default function PropertyFiltersComponent({ filters, onFiltersChange }: PropertyFiltersProps) {
+export default function PropertyFiltersComponent({ 
+  filters, 
+  sort,
+  onFiltersChange,
+  onSaveSearch,
+}: PropertyFiltersProps) {
   const [states, setStates] = useState<string[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [searchName, setSearchName] = useState('');
 
   useEffect(() => {
     const loadStates = async () => {
@@ -105,6 +120,31 @@ export default function PropertyFiltersComponent({ filters, onFiltersChange }: P
 
   const clearFilters = () => {
     onFiltersChange({});
+  };
+
+  const handleSaveSearch = () => {
+    setSaveDialogOpen(true);
+  };
+
+  const handleConfirmSave = () => {
+    if (searchName.trim()) {
+      saveSearch(searchName.trim(), filters, sort);
+      setSearchName('');
+      setSaveDialogOpen(false);
+      if (onSaveSearch) {
+        onSaveSearch();
+      }
+    }
+  };
+
+  const hasActiveFilters = () => {
+    return !!(
+      filters.minPrice ||
+      filters.maxPrice ||
+      filters.propertyTypes?.length ||
+      filters.state ||
+      filters.city
+    );
   };
 
   return (
@@ -179,7 +219,52 @@ export default function PropertyFiltersComponent({ filters, onFiltersChange }: P
         >
           Clear Filters
         </Button>
+        
+        <Button 
+          variant="contained" 
+          onClick={handleSaveSearch}
+          className="h-10"
+          disabled={!hasActiveFilters()}
+          startIcon={<Save />}
+        >
+          Save Search
+        </Button>
       </Box>
+
+      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
+        <DialogTitle>Save Search</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Search Name"
+            fullWidth
+            variant="outlined"
+            value={searchName}
+            onChange={(e) => setSearchName(e.target.value)}
+            placeholder="e.g., Condos in KL under 1M"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleConfirmSave();
+              }
+            }}
+          />
+          <Typography variant="body2" className="text-gray-500 mt-2">
+            Save your current filters and sort preferences for quick access later.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={handleConfirmSave} 
+            variant="contained" 
+            disabled={!searchName.trim()}
+            startIcon={<BookmarkBorder />}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }

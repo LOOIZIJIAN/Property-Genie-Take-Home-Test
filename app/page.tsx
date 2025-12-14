@@ -17,6 +17,7 @@ import { Property, PropertyFilters, SortOption } from '@/types/property';
 import { fetchProperties } from '@/app/api/properties';
 import PropertyCard from '@/components/PropertyCard';
 import PropertyFiltersComponent from '@/components/PropertyFilters';
+import SavedSearchesComponent from '@/components/SavedSearches';
 
 const SORT_OPTIONS: SortOption[] = [
   { value: 'created_at', label: 'Default (Newest First)' },
@@ -33,6 +34,7 @@ export default function PropertySearchPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [refreshSavedSearches, setRefreshSavedSearches] = useState(0);
 
   const loadProperties = useCallback(async () => {
     setLoading(true);
@@ -78,15 +80,36 @@ export default function PropertySearchPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleApplySavedSearch = (savedFilters: PropertyFilters, savedSort?: string) => {
+    setFilters(savedFilters);
+    if (savedSort) {
+      setSortBy(savedSort);
+    }
+    setCurrentPage(1);
+  };
+
+  const handleSaveSearch = () => {
+    setRefreshSavedSearches((prev) => prev + 1);
+  };
+
   return (
     <Container maxWidth="xl" className="py-8">
       <Typography variant="h3" component="h1" className="mb-6 font-bold">
         Property Search
       </Typography>
       
+      <SavedSearchesComponent
+        onApplySearch={handleApplySavedSearch}
+        currentFilters={filters}
+        currentSort={sortBy}
+        key={refreshSavedSearches}
+      />
+      
       <PropertyFiltersComponent 
-        filters={filters} 
-        onFiltersChange={handleFiltersChange} 
+        filters={filters}
+        sort={sortBy}
+        onFiltersChange={handleFiltersChange}
+        onSaveSearch={handleSaveSearch}
       />
       
       <Box className="flex justify-between items-center mb-6">

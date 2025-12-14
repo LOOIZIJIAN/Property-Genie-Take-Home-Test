@@ -70,3 +70,11 @@ export interface PropertySearchParams {
   sort?: string;
   filters?: PropertyFilters;
 }
+
+export interface SavedSearch {
+  id: string;
+  name: string;
+  filters: PropertyFilters;
+  sort?: string;
+  createdAt: string;
+}
