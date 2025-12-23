@@ -49,9 +49,9 @@ export default function SavedSearchesComponent({
 
   useEffect(() => {
     // Only access localStorage after component mounts on client
-    setMounted(true);
     const searches = getSavedSearches();
-    setSavedSearches(searches);
+    setSavedSearches(searches); // eslint-disable-line react-hooks/set-state-in-effect
+    setMounted(true);
   }, []);
 
   const loadSavedSearches = () => {
