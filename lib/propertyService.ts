@@ -178,7 +178,7 @@ export async function getProperties(params: PropertySearchParams): Promise<{
 
   // Apply client-side filtering as fallback if API doesn't filter properly
   if (params.filters) {
-    transformedProperties = transformedProperties.filter((property) => {
+    transformedProperties = transformedProperties.filter((property: Property) => {
       // State filter
       if (params.filters!.state && property.location.state !== params.filters!.state) {
         return false;
